@@ -36,9 +36,16 @@ type SurrealDBTestSuite struct {
 // a simple user struct for testing
 type testUser struct {
 	marshal.Basemodel `table:"test"`
-	Username          string `json:"username,omitempty"`
-	Password          string `json:"password,omitempty"`
-	ID                string `json:"id,omitempty"`
+	Username          string       `json:"username,omitempty"`
+	Password          string       `json:"password,omitempty"`
+	Personal          PersonalInfo `json:"personal_info"`
+	Friends           []string     `json:"friends,omitempty"`
+	ID                string       `json:"id,omitempty"`
+}
+
+type PersonalInfo struct {
+	Name    string `json:"name,omitempty"`
+	Surname string `json:"surname,omitempty"`
 }
 
 func TestSurrealDBSuite(t *testing.T) {
@@ -473,6 +480,29 @@ func (s *SurrealDBTestSuite) TestPatch() {
 
 	s.Equal("john999", username) // Ensure username hasn't change.
 	s.EqualValues(patches[1].Value, data)
+}
+
+func (s *SurrealDBTestSuite) TestFetch() {
+	userSlice := []testUser{
+		{Username: "arthur", Personal: PersonalInfo{Name: "arthur", Surname: "morgan"}, Password: "deer", Friends: []string{"users:john"}},
+	}
+
+	for _, v := range userSlice {
+		data, err := s.db.Create(v.ID, v)
+		s.NoError(err)
+		s.NotNil(data)
+	}
+
+	for _, v := range userSlice {
+		res, err := s.db.Query("select * from $table fetch $fetchstr;", map[string]interface{}{
+			"record":   v.ID,
+			"fetchstr": "friends.*",
+		})
+		// TODO: Only for debug not merge
+		fmt.Println(res, err)
+		s.NoError(err)
+		s.NotNil(res)
+	}
 }
 
 func (s *SurrealDBTestSuite) TestNonRowSelect() {
