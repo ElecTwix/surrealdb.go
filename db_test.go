@@ -298,7 +298,8 @@ func (s *SurrealDBTestSuite) TestCreate() {
 		data = append(data,
 			testUser{
 				Username: "johnny",
-				Password: "123"},
+				Password: "123",
+			},
 			testUser{
 				Username: "joe",
 				Password: "123",
@@ -484,7 +485,8 @@ func (s *SurrealDBTestSuite) TestPatch() {
 
 func (s *SurrealDBTestSuite) TestFetch() {
 	userSlice := []testUser{
-		{Username: "arthur", Personal: PersonalInfo{Name: "arthur", Surname: "morgan"}, Password: "deer", Friends: []string{"users:john"}},
+		{ID: "users:arthur", Username: "arthur", Personal: PersonalInfo{Name: "arthur", Surname: "morgan"}, Password: "deer", Friends: []string{"users:john"}},
+		{ID: "users:john", Username: "john", Personal: PersonalInfo{Name: "john", Surname: "marston"}, Password: "wolf", Friends: []string{"users:arthur"}},
 	}
 
 	for _, v := range userSlice {
