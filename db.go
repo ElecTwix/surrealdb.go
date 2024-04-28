@@ -32,6 +32,10 @@ func New(url string, connection conn.Connection) (*DB, error) {
 	return &DB{connection}, nil
 }
 
+func (db *DB) SetReconnectCallback(callback func()) {
+	db.conn.SetReconnectCallback(callback)
+}
+
 // --------------------------------------------------
 // Public methods
 // --------------------------------------------------

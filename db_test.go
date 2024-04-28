@@ -133,6 +133,16 @@ func (s *SurrealDBTestSuite) SetupSuite() {
 	_ = signin(s)
 	_, err := db.Use("test", "test")
 	s.Require().NoError(err)
+
+	db.SetReconnectCallback(func() {
+		fmt.Println("callback started")
+		signin(s)
+		_, err := db.Use("test", "test")
+		if err != nil {
+			s.T().Fatal(err)
+		}
+		fmt.Println("Reconnected from callback")
+	})
 }
 
 // Sign with the root user

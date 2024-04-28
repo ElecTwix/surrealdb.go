@@ -30,12 +30,20 @@ const (
 
 type Option func(ws *WebSocket) error
 
+type auth struct {
+	Username string `json:"user,omitempty"`
+	Password string `json:"pass,omitempty"`
+}
+
 type WebSocket struct {
-	Conn     *gorilla.Conn
-	connLock sync.Mutex
-	Timeout  time.Duration
-	Option   []Option
-	logger   logger.Logger
+	Conn              *gorilla.Conn
+	URL               string
+	Auth              auth
+	connLock          sync.Mutex
+	Timeout           time.Duration
+	Option            []Option
+	logger            logger.Logger
+	ReconnectCallBack func()
 
 	responseChannels     map[string]chan rpc.RPCResponse
 	responseChannelsLock sync.RWMutex
@@ -53,10 +61,12 @@ func Create() *WebSocket {
 		responseChannels:     make(map[string]chan rpc.RPCResponse),
 		notificationChannels: make(map[string]chan model.Notification),
 		Timeout:              DefaultTimeout * time.Second,
+		Auth:                 auth{Username: "root", Password: "root"},
 	}
 }
 
 func (ws *WebSocket) Connect(url string) (conn.Connection, error) {
+	ws.URL = url
 	dialer := gorilla.DefaultDialer
 	dialer.EnableCompression = true
 
@@ -75,6 +85,10 @@ func (ws *WebSocket) Connect(url string) (conn.Connection, error) {
 
 	ws.initialize()
 	return ws, nil
+}
+
+func (ws *WebSocket) SetReconnectCallback(callback func()) {
+	ws.ReconnectCallBack = callback
 }
 
 func (ws *WebSocket) SetTimeOut(timeout time.Duration) *WebSocket {
@@ -235,6 +249,7 @@ func (ws *WebSocket) write(v interface{}) error {
 }
 
 func (ws *WebSocket) initialize() {
+	fmt.Println("initializing gorilla websocket")
 	go func() {
 		for {
 			select {
@@ -244,9 +259,43 @@ func (ws *WebSocket) initialize() {
 				var res rpc.RPCResponse
 				err := ws.read(&res)
 				if err != nil {
+					if gorilla.IsUnexpectedCloseError(err) {
+						for k := range ws.responseChannels {
+							delete(ws.responseChannels, k)
+						}
+
+						for k := range ws.notificationChannels {
+							delete(ws.notificationChannels, k)
+						}
+
+						dialer := gorilla.DefaultDialer
+						dialer.EnableCompression = true
+
+						time.Sleep(5 * time.Second)
+
+						connection, _, err := dialer.Dial(ws.URL, nil)
+						if err != nil {
+							fmt.Println("error reconnecting", err)
+							return
+						}
+
+						fmt.Println("reconnected")
+
+						ws.Conn = connection
+
+						ws.connLock = sync.Mutex{}
+						fmt.Println("connection unlocked")
+
+						ws.ReconnectCallBack()
+
+						continue
+					}
+
+					fmt.Println("error reading response", err)
 					if errors.Is(err, net.ErrClosed) {
 						break
 					}
+
 					ws.logger.Error(err.Error())
 					continue
 				}
