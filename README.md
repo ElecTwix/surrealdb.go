@@ -1,6 +1,6 @@
 # surrealdb.go
 
-The official SurrealDB library for Golang.
+The official SurrealDB library for Go.
 
 [![](https://img.shields.io/badge/status-beta-ff00bb.svg?style=flat-square)](https://github.com/surrealdb/surrealdb.go) 
 [![](https://img.shields.io/badge/docs-view-44cc11.svg?style=flat-square)](https://surrealdb.com/docs/integration/libraries/golang)
@@ -130,11 +130,13 @@ make lint
 You also need to be running SurrealDB alongside the tests.
 We recommend using the nightly build, as development may rely on the latest functionality.
 
-
 ## Helper functions
+
 ### Smart Marshal
 
-SurrealDB Go library supports smart marshal. It means that you can use any type of data as a value in your struct. SurrealDB Go library will automatically convert it to the correct type.
+SurrealDB Go library supports smart marshal.
+It means that you can use any type of data as a value in your struct.
+SurrealDB Go library will automatically convert it to the correct type.
 
 ```go
 // Recommended to use with SmartUnmarshal SmartMarshal
@@ -155,7 +157,3 @@ SurrealDB Go library supports smart unmarshal. It means that you can unmarshal a
 data, err := surrealdb.SmartUnmarshal[testUser](s.db.Select(user[0].ID))
 
 ```
-
-
-
-
