@@ -11,7 +11,8 @@ import (
 
 // DB is a client for the SurrealDB database that holds the connection.
 type DB struct {
-	conn conn.Connection
+	conn       conn.Connection
+	ExitSignal chan error
 }
 
 // Auth is a struct that holds surrealdb auth data for login.
@@ -25,11 +26,12 @@ type Auth struct {
 
 // New creates a new SurrealDB client.
 func New(url string, connection conn.Connection) (*DB, error) {
-	connection, err := connection.Connect(url)
+	exitSignal := make(chan error)
+	connection, err := connection.Connect(url, exitSignal)
 	if err != nil {
 		return nil, err
 	}
-	return &DB{connection}, nil
+	return &DB{connection, exitSignal}, nil
 }
 
 // --------------------------------------------------

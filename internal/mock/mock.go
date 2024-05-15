@@ -7,10 +7,9 @@ import (
 	"github.com/surrealdb/surrealdb.go/pkg/model"
 )
 
-type ws struct {
-}
+type ws struct{}
 
-func (w *ws) Connect(url string) (conn.Connection, error) {
+func (w *ws) Connect(url string, exitSignal chan error) (conn.Connection, error) {
 	return w, nil
 }
 

@@ -121,6 +121,18 @@ func (s *SurrealDBTestSuite) openConnection() *surrealdb.DB {
 	impl := s.connImplementations[s.name]
 	require.NotNil(s.T(), impl)
 	db, err := surrealdb.New(url, impl)
+
+	go func(s *SurrealDBTestSuite) {
+		connErr := <-db.ExitSignal
+		if connErr != nil {
+			if connErr == conn.ErrConnectionClosed {
+				return // Connection closed is expected
+			}
+			fmt.Println(connErr)
+			require.NoError(s.T(), connErr)
+		}
+	}(s)
+
 	s.Require().NoError(err)
 	return db
 }

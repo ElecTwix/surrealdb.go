@@ -56,7 +56,7 @@ func Create() *WebSocket {
 	}
 }
 
-func (ws *WebSocket) Connect(url string) (conn.Connection, error) {
+func (ws *WebSocket) Connect(url string, exitSignal chan error) (conn.Connection, error) {
 	dialer := gorilla.DefaultDialer
 	dialer.EnableCompression = true
 
@@ -73,7 +73,8 @@ func (ws *WebSocket) Connect(url string) (conn.Connection, error) {
 		}
 	}
 
-	ws.initialize()
+	go ws.initialize(exitSignal)
+
 	return ws, nil
 }
 
@@ -234,26 +235,29 @@ func (ws *WebSocket) write(v interface{}) error {
 	return ws.Conn.WriteMessage(gorilla.TextMessage, data)
 }
 
-func (ws *WebSocket) initialize() {
-	go func() {
-		for {
-			select {
-			case <-ws.close:
-				return
-			default:
-				var res rpc.RPCResponse
-				err := ws.read(&res)
-				if err != nil {
-					if errors.Is(err, net.ErrClosed) {
-						break
-					}
-					ws.logger.Error(err.Error())
-					continue
+func (ws *WebSocket) initialize(exitSignal chan error) {
+	for {
+		select {
+		case <-ws.close:
+			exitSignal <- conn.ErrConnectionClosed
+		default:
+			var res rpc.RPCResponse
+			err := ws.read(&res)
+			if err != nil {
+				// this needed because gorilla not shudown gracefully
+				if errors.Is(err, net.ErrClosed) {
+					exitSignal <- conn.ErrConnectionClosed
 				}
-				go ws.handleResponse(res)
+				// returns error if connection drop in fly
+				if gorilla.IsUnexpectedCloseError(err) {
+					exitSignal <- conn.ErrClosedPipe
+				}
+				ws.logger.Error(err.Error())
+				continue
 			}
+			go ws.handleResponse(res)
 		}
-	}()
+	}
 }
 
 func (ws *WebSocket) handleResponse(res rpc.RPCResponse) {
